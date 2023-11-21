@@ -1,80 +1,128 @@
-Ball[] balls;
-int numBalls = 70;
+import processing.serial.*;
+
+Serial myPort;
+
+ArrayList<Ball> balls_right;
+ArrayList<Ball> balls_left;
+int numBalls = 35;
 
 void setup() {
     colorMode(HSB,360,100,100,100);
-    size(displayWidth, displayHeight);
-    // fullScreen(); 最終的にこの表示に変更する
+    //size(displayWidth, displayHeight);
+     fullScreen(); 
     background(0);
 
-    balls = new Ball[numBalls];
-    for (int i = 0; i < numBalls; i++) {
-        float x = 0;
-        float y = 0;
-        float radius = 10;
-        balls[i] = new Ball(x,y,radius,i * PI/12,0);
-    }
+    balls_right = new ArrayList<Ball>();
+    balls_left = new ArrayList<Ball>();
+    
+    String portName = Serial.list()[0]; // 適切なポートを選択
+    myPort = new Serial(this,portName, 9600);
 }
 
 void draw() {
-    background(0);
+    println(frameCount);
+    if(setBall_done_flag==false){
     setBall();
-    // moveBall();
-    // ball.update();
-    // ball.display();
-    // ball2.update();
-    // ball2.display();
-    for (int i = 0; i < numBalls; i++) {
-        balls[i].update();
-        balls[i].display();
     }
+    if(setBall_done_flag==true&&moveBall_done_flag==false){
+    moveBall();
+    }
+    if(moveBall_done_flag==true&&docBall_done_flag==false){
+      docBall();
+    }
+    
+    fill(0,5);
+    noStroke();
+    rect(0,0,width,height);
 }
 
-//ボールが入り、定位置に行く
+float startX1 = 710;
+float startY1 = -560;
+float startX2 = 630;
+float startY2 = -460;
+float r = 50;
+float addR = 0;
+boolean setBall_flag=false;
+boolean setBall_done_flag=false;
+
 void setBall() {
     push();
     translate(width / 2,height / 2);
-    float startX = 0;
-    float startY = 0;
-    float r = 50;
     fill(#ffffff);
-    ellipse(startX - 350,startY,r,r);
-    ellipse(startX + 350,startY,r,r);
+    ellipse(startX1 - 350,startY1,r,r);
+    fill(#ffffff);
+    ellipse(startX2 + 350,startY2,r,r);
     pop();
+    if(startX1>=0){
+    startX1-=3.8;
+    startY1+=3;
+    startX2-=3.37;
+    startY2+=2.45;
+    }
+    if(startX1<=0&&setBall_flag==false){
+    r=r+cos(addR)-0.75;
+    addR+=PI/45;
+    if(addR>=PI){
+      setBall_flag=true;
+      setBall_done_flag=true;
+    }
+    }
 }
 
-float i1 = 0;
-float i2 = 0;
-float px = 0;
-float py = 0;
-float px2 = 0;
-float py2 = 0;
-float radius = 400;
-float addTcount = 0;
+
+boolean moveBall_done_flag=false;
+
 void moveBall() {
-    noStroke();
-    fill(#ff4500);
-    push();
-    translate(width / 2,height / 2);
-    // for (float i = 0;i < 14 * PI;i += PI / 180) {
-    //     px = radius * sin(8 * i / 7) * cos(i);
-    //     py = radius * sin(8 * i / 7) * sin(i);
-    //     ellipse(px,py,2,2);
-// }
-    //PI = 右
-    //4 * PI = 左
-    i1 = PI;
-    i2 = 4 * PI;
-    px = radius * sin(8 * (i1 + addTcount) / 6) * cos(i1 + addTcount);
-    py = radius * sin(8 * (i1 + addTcount) / 6) * sin(i1 + addTcount);
-    px2 = radius * sin(8 * (i2 + addTcount) / 6) * cos(i2 + addTcount);
-    py2 = radius * sin(8 * (i2 + addTcount) / 6) * sin(i2 + addTcount);
-    ellipse(px,py,10,10);
-    ellipse(px2,py2,10,10);
-    addTcount += 0.01;
-    pop();
+    if (frameCount % 30 == 0) {
+        float radius = 10;
+        balls_right.add(new Ball(0, 0, radius, PI, 0));
+        balls_left.add(new Ball(0, 0, radius, 4*PI, 0));
+        if (balls_right.size() > numBalls) {
+            balls_right.remove(0);
+            balls_left.remove(0);
+        }
+    }
+
+    for (Ball ball : balls_right) {
+        ball.update();
+        ball.display();
+    }
+    
+        for (Ball ball : balls_left) {
+        ball.update();
+        ball.display();
+    }
+    if(frameCount>=1400){
+       moveBall_done_flag=true;
+    }
 }
 
+boolean docBall_done_flag=false;
+float doc_r=0;
+float doc_x=0;
+float doc_y=0;
+
+void docBall(){
+    fill(#ffffff);
+    push();
+    translate(width/2,height/2);
+    ellipse(doc_x,doc_y,920+doc_r,920+doc_r);
+    pop();
+    if(frameCount>=1500&&doc_r>=-870)  {
+      doc_r-=3;
+    }
+    if(frameCount>=1920&&doc_y<=height/2-25){
+       doc_y+=4;
+    }
+    if(frameCount>=2100){
+       doc_x-=4;
+    }
+    if (doc_x<=(-width/2+50)) {
+      myPort.write('1'); 
+    }
+}
+
+//ボールのクラス
 class Ball {
     float x,y;    // ボールの位置
     float i;// 角度
@@ -93,6 +141,11 @@ class Ball {
     void update() {
         addI += 0.01;
         updatePosition();
+        if(frameCount>=1300&&frameCount<=1400){
+          radius=radius+1;
+        }else{
+          radius=map(20*sin(frameCount*0.01+addI),0,20,10,18);
+        }
     }
     
     void updatePosition() {
@@ -101,7 +154,7 @@ class Ball {
     }
     
     void display() {
-        fill(195,100,100,20);
+        fill(100,0,100,30);
         noStroke();
         push();
         translate(width / 2,height / 2);
